@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SML Telemetry</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #0f0f0f;
+    --bg2:      #161616;
+    --bg3:      #1e1e1e;
+    --border:   #2a2a2a;
+    --text:     #e8e8e8;
+    --muted:    #666;
+    --accent:   #c0392b;
+    --green:    #27ae60;
+    --mono:     'IBM Plex Mono', monospace;
+    --sans:     'IBM Plex Sans', sans-serif;
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    overflow: hidden;
+  }
+
+  .shell {
+    display: grid;
+    grid-template-rows: 52px 1fr 36px;
+    width: 100vw;
+    height: 100vh;
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .cape-logo {
+    height: 32px;
+    width: auto;
+    opacity: 0.9;
+  }
+
+  .title {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    color: var(--text);
+  }
+
+  .title-sub {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 2px;
+    letter-spacing: 0.08em;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+  }
+
+  .status {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--border);
+    flex-shrink: 0;
+  }
+  .status-dot.live { background: var(--green); }
+  .status-dot.sim  { background: #e67e22; }
+
+  .pkt-count {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  /* ── Main grid ── */
+  main {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+    overflow: hidden;
+  }
+
+  .panel {
+    background: var(--bg2);
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow: hidden;
+  }
+
+  .panel-wide { grid-column: span 2; }
+
+  .panel-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 8px;
+  }
+
+  /* ── Big number ── */
+  .big-num {
+    font-family: var(--mono);
+    font-size: 52px;
+    font-weight: 500;
+    line-height: 1;
+    color: var(--text);
+    letter-spacing: -0.02em;
+  }
+
+  .big-unit {
+    font-family: var(--mono);
+    font-size: 16px;
+    color: var(--muted);
+    margin-left: 4px;
+  }
+
+  /* ── Stat grid ── */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+  }
+
+  .stat {
+    background: var(--bg3);
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .stat-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .stat-val {
+    font-family: var(--mono);
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--text);
+    margin-top: 6px;
+    line-height: 1;
+  }
+
+  .stat-unit {
+    font-size: 11px;
+    color: var(--muted);
+    margin-left: 2px;
+  }
+
+  /* ── GPS ── */
+  .gps-table {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex: 1;
+    justify-content: center;
+  }
+
+  .gps-row {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+  }
+
+  .gps-key {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    min-width: 32px;
+  }
+
+  .gps-val {
+    font-family: var(--mono);
+    font-size: 20px;
+    color: var(--text);
+  }
+
+  /* ── IMU bars ── */
+  .imu-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex: 1;
+    justify-content: center;
+  }
+
+  .imu-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .imu-axis {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    min-width: 18px;
+    letter-spacing: 0.1em;
+  }
+
+  .bar-track {
+    flex: 1;
+    height: 4px;
+    background: var(--bg3);
+    border-radius: 2px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .bar-center {
+    position: absolute;
+    top: 0; bottom: 0;
+    left: 50%;
+    width: 1px;
+    background: var(--border);
+  }
+
+  .bar-fill {
+    position: absolute;
+    top: 0; bottom: 0;
+    background: var(--accent);
+    transition: width 0.3s ease, left 0.3s ease;
+  }
+
+  .imu-val {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    min-width: 48px;
+    text-align: right;
+  }
+
+  /* ── Signal ── */
+  .signal-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    flex: 1;
+    justify-content: center;
+  }
+
+  .signal-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .sig-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    min-width: 52px;
+    letter-spacing: 0.1em;
+  }
+
+  .sig-bar-track {
+    flex: 1;
+    height: 3px;
+    background: var(--bg3);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .sig-bar-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width 0.4s ease, background 0.3s;
+  }
+
+  .sig-val {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text);
+    min-width: 72px;
+    text-align: right;
+  }
+
+  /* ── Chart ── */
+  .chart-wrap {
+    flex: 1;
+    min-height: 0;
+    position: relative;
+  }
+
+  canvas { display: block; width: 100% !important; height: 100% !important; }
+
+  /* ── Log ── */
+  .log-wrap {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .log-line {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.6;
+  }
+
+  .log-id   { color: var(--accent); margin-right: 8px; }
+  .log-ts   { margin-right: 10px; color: #3a3a3a; }
+  .log-data { color: #666; }
+
+  /* ── Footer ── */
+  footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    background: var(--bg2);
+    border-top: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <header>
+    <div class="header-left">
+      <img src="Logo-CAPE.png" class="cape-logo" alt="CAPE" onerror="this.style.display='none'">
+      <div>
+        <div class="title">SML-01 &mdash; Weather Balloon Telemetry</div>
+        <div class="title-sub">ESP32 · RFM96 · LoRa 915 MHz · UL Lafayette EE</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="pkt-count">PKT <span id="pkt-count">0</span></div>
+      <div class="status">
+        <div class="status-dot" id="conn-dot"></div>
+        <span id="conn-label">CONNECTING</span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- Temperature -->
+    <div class="panel">
+      <div class="panel-label">Temperature</div>
+      <div>
+        <span class="big-num" id="temp-val">--</span>
+        <span class="big-unit">°C</span>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="chart-temp"></canvas>
+      </div>
+    </div>
+
+    <!-- Atmospheric -->
+    <div class="panel">
+      <div class="panel-label">Atmospheric</div>
+      <div class="stat-grid">
+        <div class="stat">
+          <div class="stat-label">Altitude</div>
+          <div class="stat-val"><span id="alt-val">--</span><span class="stat-unit"> m</span></div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Pressure</div>
+          <div class="stat-val"><span id="pres-val">--</span><span class="stat-unit"> hPa</span></div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Humidity</div>
+          <div class="stat-val"><span id="hum-val">--</span><span class="stat-unit"> %</span></div>
+        </div>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="chart-alt"></canvas>
+      </div>
+    </div>
+
+    <!-- GPS -->
+    <div class="panel">
+      <div class="panel-label">GPS Position</div>
+      <div class="gps-table">
+        <div class="gps-row">
+          <span class="gps-key">LAT</span>
+          <span class="gps-val" id="gps-lat">--</span>
+        </div>
+        <div class="gps-row">
+          <span class="gps-key">LON</span>
+          <span class="gps-val" id="gps-lon">--</span>
+        </div>
+        <div class="gps-row">
+          <span class="gps-key">ALT</span>
+          <span class="gps-val" id="gps-alt">--</span>
+          <span style="font-family:var(--mono);font-size:11px;color:var(--muted)">m</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Signal -->
+    <div class="panel">
+      <div class="panel-label">Radio Link</div>
+      <div class="signal-rows">
+        <div class="signal-row">
+          <span class="sig-label">RSSI</span>
+          <div class="sig-bar-track"><div class="sig-bar-fill" id="rssi-bar" style="width:0%"></div></div>
+          <span class="sig-val" id="rssi-val">--</span>
+        </div>
+        <div class="signal-row">
+          <span class="sig-label">SNR</span>
+          <div class="sig-bar-track"><div class="sig-bar-fill" id="snr-bar" style="width:0%"></div></div>
+          <span class="sig-val" id="snr-val">--</span>
+        </div>
+        <div class="signal-row">
+          <span class="sig-label">FREQ ERR</span>
+          <div class="sig-bar-track" style="background:transparent"></div>
+          <span class="sig-val" id="freq-val">--</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Accelerometer -->
+    <div class="panel">
+      <div class="panel-label">Accelerometer (m/s²)</div>
+      <div class="imu-grid">
+        <div class="imu-row">
+          <span class="imu-axis">X</span>
+          <div class="bar-track"><div class="bar-center"></div><div class="bar-fill" id="ax-fill"></div></div>
+          <span class="imu-val" id="ax-val">0.00</span>
+        </div>
+        <div class="imu-row">
+          <span class="imu-axis">Y</span>
+          <div class="bar-track"><div class="bar-center"></div><div class="bar-fill" id="ay-fill"></div></div>
+          <span class="imu-val" id="ay-val">0.00</span>
+        </div>
+        <div class="imu-row">
+          <span class="imu-axis">Z</span>
+          <div class="bar-track"><div class="bar-center"></div><div class="bar-fill" id="az-fill"></div></div>
+          <span class="imu-val" id="az-val">0.00</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rotation -->
+    <div class="panel">
+      <div class="panel-label">Rotation (rad/s)</div>
+      <div class="imu-grid">
+        <div class="imu-row">
+          <span class="imu-axis">X</span>
+          <div class="bar-track"><div class="bar-center"></div><div class="bar-fill" id="rx-fill"></div></div>
+          <span class="imu-val" id="rx-val">0.000</span>
+        </div>
+        <div class="imu-row">
+          <span class="imu-axis">Y</span>
+          <div class="bar-track"><div class="bar-center"></div><div class="bar-fill" id="ry-fill"></div></div>
+          <span class="imu-val" id="ry-val">0.000</span>
+        </div>
+        <div class="imu-row">
+          <span class="imu-axis">Z</span>
+          <div class="bar-track"><div class="bar-center"></div><div class="bar-fill" id="rz-fill"></div></div>
+          <span class="imu-val" id="rz-val">0.000</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Packet log -->
+    <div class="panel panel-wide">
+      <div class="panel-label">Packet Log</div>
+      <div class="log-wrap" id="log-feed"></div>
+    </div>
+
+  </main>
+
+  <footer>
+    <span>CAJUN ADVANCED PICOSATELLITE EXPERIMENT &middot; UL LAFAYETTE</span>
+    <span id="last-rx">AWAITING SIGNAL</span>
+    <span id="clock">--:--:-- UTC</span>
+  </footer>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+// Clock
+function tick() {
+  const n = new Date(), p = v => String(v).padStart(2,'0');
+  document.getElementById('clock').textContent =
+    `${p(n.getUTCHours())}:${p(n.getUTCMinutes())}:${p(n.getUTCSeconds())} UTC`;
+}
+setInterval(tick, 1000); tick();
+
+// Charts
+const N = 80;
+function mkChart(id, color) {
+  return new Chart(document.getElementById(id).getContext('2d'), {
+    type: 'line',
+    data: { labels: Array(N).fill(''), datasets: [{ data: Array(N).fill(null),
+      borderColor: color, borderWidth: 1, pointRadius: 0, tension: 0.3, fill: false }] },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      plugins: { legend: { display: false }, tooltip: { enabled: false } },
+      scales: {
+        x: { display: false },
+        y: { display: true,
+          grid: { color: '#1e1e1e', drawBorder: false },
+          ticks: { color: '#444', font: { family: "'IBM Plex Mono'", size: 9 },
+            maxTicksLimit: 3, padding: 4 },
+          border: { display: false } }
+      }
+    }
+  });
+}
+const charts = { temp: mkChart('chart-temp','#c0392b'), alt: mkChart('chart-alt','#2980b9') };
+function push(chart, val) {
+  const d = chart.data.datasets[0].data;
+  d.push(val); if (d.length > N) d.shift();
+  chart.data.labels = Array(d.length).fill('');
+  chart.update('none');
+}
+
+// Bars
+function setBar(id, val, max) {
+  const pct = Math.min(Math.abs(val) / max, 1) * 50;
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.style.width = pct + '%';
+  el.style.left  = val >= 0 ? '50%' : (50 - pct) + '%';
+}
+function rssiPct(r) { return Math.max(0, Math.min(100, ((r + 120) / 90) * 100)); }
+function rssiColor(r) { return r > -70 ? '#27ae60' : r > -90 ? '#e67e22' : '#c0392b'; }
+function snrPct(s)  { return Math.max(0, Math.min(100, ((s + 10) / 30) * 100)); }
+
+// Apply
+function apply(p) {
+  document.getElementById('temp-val').textContent = p.temperature.toFixed(1);
+  document.getElementById('alt-val').textContent  = p.altitude.toFixed(1);
+  document.getElementById('pres-val').textContent = (p.pressure / 100).toFixed(1);
+  document.getElementById('hum-val').textContent  = p.humidity.toFixed(1);
+  document.getElementById('gps-lat').textContent  = p.latitude.toFixed(6);
+  document.getElementById('gps-lon').textContent  = p.longitude.toFixed(6);
+  document.getElementById('gps-alt').textContent  = p.altitude.toFixed(1);
+
+  const rb = document.getElementById('rssi-bar');
+  rb.style.width = rssiPct(p.rssi) + '%';
+  rb.style.background = rssiColor(p.rssi);
+  document.getElementById('rssi-val').textContent = p.rssi.toFixed(0) + ' dBm';
+  document.getElementById('snr-bar').style.width  = snrPct(p.snr) + '%';
+  document.getElementById('snr-val').textContent  = p.snr.toFixed(1) + ' dB';
+  document.getElementById('freq-val').textContent = (p.freq_error ?? 0).toFixed(1) + ' Hz';
+
+  setBar('ax-fill', p.accel_x, 20); document.getElementById('ax-val').textContent = p.accel_x.toFixed(2);
+  setBar('ay-fill', p.accel_y, 20); document.getElementById('ay-val').textContent = p.accel_y.toFixed(2);
+  setBar('az-fill', p.accel_z, 20); document.getElementById('az-val').textContent = p.accel_z.toFixed(2);
+  setBar('rx-fill', p.rot_x, 2);   document.getElementById('rx-val').textContent = p.rot_x.toFixed(3);
+  setBar('ry-fill', p.rot_y, 2);   document.getElementById('ry-val').textContent = p.rot_y.toFixed(3);
+  setBar('rz-fill', p.rot_z, 2);   document.getElementById('rz-val').textContent = p.rot_z.toFixed(3);
+
+  push(charts.temp, p.temperature);
+  push(charts.alt,  p.altitude);
+
+  document.getElementById('pkt-count').textContent = p.id ?? '?';
+  document.getElementById('last-rx').textContent   = 'LAST PKT ' + (p.timestamp ?? '--');
+
+  const feed = document.getElementById('log-feed');
+  const line = document.createElement('div');
+  line.className = 'log-line';
+  line.innerHTML =
+    `<span class="log-id">#${p.id}</span>` +
+    `<span class="log-ts">${p.timestamp}</span>` +
+    `<span class="log-data">` +
+    `T:${p.temperature.toFixed(1)}°C  H:${p.humidity.toFixed(1)}%  ` +
+    `P:${(p.pressure/100).toFixed(1)}hPa  Alt:${p.altitude.toFixed(1)}m  ` +
+    `GPS:(${p.latitude.toFixed(5)}, ${p.longitude.toFixed(5)})  ` +
+    `RSSI:${p.rssi.toFixed(0)}dBm  SNR:${p.snr.toFixed(1)}dB</span>`;
+  feed.insertBefore(line, feed.firstChild);
+  while (feed.children.length > 14) feed.removeChild(feed.lastChild);
+}
+
+// Status
+function setStatus(cls, label) {
+  document.getElementById('conn-dot').className = 'status-dot ' + cls;
+  document.getElementById('conn-label').textContent = label;
+}
+
+// WebSocket
+let ws, retryTimer;
+function connect() {
+  if (ws) { try { ws.close(); } catch(e){} }
+  ws = new WebSocket('ws://localhost:8765');
+  ws.onopen  = () => clearTimeout(retryTimer);
+  ws.onerror = () => {};
+  ws.onclose = () => { setStatus('','DISCONNECTED'); retryTimer = setTimeout(connect, 2000); };
+  ws.onmessage = ev => {
+    let m; try { m = JSON.parse(ev.data); } catch(e) { return; }
+    if (m.type === 'init' || m.type === 'serial_status') {
+      (m.serial_connected ?? m.connected) ? setStatus('live','LIVE') : setStatus('','WAITING');
+    }
+    if (m.type === 'packet') {
+      setStatus('live','LIVE'); apply(m);
+    }
+  };
+}
+connect();
+</script>
+</body>
+</html>
